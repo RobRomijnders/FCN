@@ -1,0 +1,81 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>FCN by RobRomijnders</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/github-light.css">
+    <meta name="viewport" content="width=device-width">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>FCN</h1>
+        <p>Fully Convolutional Network</p>
+
+        <p class="view"><a href="https://github.com/RobRomijnders/FCN">View the Project on GitHub <small>RobRomijnders/FCN</small></a></p>
+
+
+        <ul>
+          <li><a href="https://github.com/RobRomijnders/FCN/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/RobRomijnders/FCN/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/RobRomijnders/FCN">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h2>
+<a id="fully-convolutional-network" class="anchor" href="#fully-convolutional-network" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Fully Convolutional Network</h2>
+
+<p>This post implements a Fully Convolutional Network, inspired after <a href="http://arxiv.org/abs/1412.6806">Springenberg's article on ArXiv in 2015</a>. In many ways, the implementation is similar to my earlier <a href="http://robromijnders.github.io/tensorflow_basic/">CNN for MNIST</a>. The main difference is at testtime, where we feed images of another size than during training.</p>
+
+<h2>
+<a id="fully-convolutional" class="anchor" href="#fully-convolutional" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Fully convolutional</h2>
+
+<p>My interest for Fully Convolutional networks is the invariance for image sizes. Many healthcare applications of CNN's focus on focal pathologies, like tumors or fibroses. In the application for digital pathology, the size of the tumor might be ten by ten pixels, whereas the full image can be over thousand by thousand pixels. Therefore, we train CNN's with tiles of the bigger image. At testtime, though, we want to evaluate the full image and return a <em>heat-map</em> over the image where a possible patholohy might reside. </p>
+
+<h2>
+<a id="setup" class="anchor" href="#setup" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Setup</h2>
+
+<p>To simulate a situation where a local object of interest is immersed in a global piece of data, we <em>hide</em> MNIST handwritten images in larger images. The MATLAB-code <em>MNIST_generate_random_offset.m</em> does that. Next, we re-use code for a previous MNIST project to train a CNN. This CNN maps 28 by 28 pixel images to a distribution over the ten labels. The essential difference in our graph versus the previous implementation is the reshaping part:</p>
+
+<div class="highlight highlight-source-python"><pre>  x_image <span class="pl-k">=</span> tf.cond(test_large, <span class="pl-k">lambda</span>: tf.reshape(x, [<span class="pl-k">-</span><span class="pl-c1">1</span>,<span class="pl-c1">110</span>,<span class="pl-c1">110</span>,<span class="pl-c1">1</span>]), <span class="pl-k">lambda</span>: tf.reshape(x, [<span class="pl-k">-</span><span class="pl-c1">1</span>,<span class="pl-c1">28</span>,<span class="pl-c1">28</span>,<span class="pl-c1">1</span>]))</pre></div>
+
+<p>The conditional reshapes the input vector into 28 by 28 or 110 by 100, depending on the fed boolean Tensor, test_large.
+In Tensorboard, we see this
+<img src="https://github.com/RobRomijnders/FCN/blob/master/graph.png?raw=true" alt="graph_reshape"> </p>
+
+<h2>
+<a id="output" class="anchor" href="#output" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Output</h2>
+
+<p>The Softmax output layer of the CNN calculates a distribution over the target labels. At train-time, we train on the cross-entropy of this distribution. At test-time, though, the fed images are 110 by 110. Consequently, the final layer has activation grids, rather than activation vectors. Instead of feeding this to a Softmax layer, we plot these activations as heat-maps. Softmax is a monotonically increasing function. Hence, high values in these heat-maps correspond to high probabilities of the activated area being a particular label.</p>
+
+<h2>
+<a id="results" class="anchor" href="#results" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Results</h2>
+
+<p>A few examples of the resulting heat-maps:
+<img src="https://github.com/RobRomijnders/FCN/blob/master/images/sample_1_2.png?raw=true" alt="Example1">
+<img src="https://github.com/RobRomijnders/FCN/blob/master/images/sample_2_1.png?raw=true" alt="Example2">
+<img src="https://github.com/RobRomijnders/FCN/blob/master/images/sample_3_5.png?raw=true" alt="Example3">
+<img src="https://github.com/RobRomijnders/FCN/blob/master/images/sample_4_9.png?raw=true" alt="Example4">
+<img src="https://github.com/RobRomijnders/FCN/blob/master/images/sample_5_9.png?raw=true" alt="Example5">
+<img src="https://github.com/RobRomijnders/FCN/blob/master/images/sample_6_2.png?raw=true" alt="Example6">
+<img src="https://github.com/RobRomijnders/FCN/blob/master/images/sample_7_5.png?raw=true" alt="Example7">
+<img src="https://github.com/RobRomijnders/FCN/blob/master/images/sample_8_6.png?raw=true" alt="Example8">
+<img src="https://github.com/RobRomijnders/FCN/blob/master/images/sample_9_1.png?raw=true" alt="Example9"></p>
+
+<p>As always, I am curious to any comments and questions. Reach me at <a href="mailto:romijndersrob@gmail.com">romijndersrob@gmail.com</a></p>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/RobRomijnders">RobRomijnders</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+    
+  </body>
+</html>
